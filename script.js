@@ -1,5 +1,5 @@
 // Paste your exact Raw GitHub Gist Link inside the quotes below
-const GIST_URL = "https://gist.githubusercontent.com/SpellsSmells/2ec3f69e05b539ab8aafecc217cf1ce9/raw/f5e61ff17a96e6c4b9c8698a10804755f2d06a3e/map-data.txt";
+const GIST_URL = "https://gist.githubusercontent.com/SpellsSmells/2ec3f69e05b539ab8aafecc217cf1ce9/raw/map-data.txt";
 
 const TAG_AREAS = {
     "menu-item-a1fn2": "291,267 344,267 344,360 322,361",
