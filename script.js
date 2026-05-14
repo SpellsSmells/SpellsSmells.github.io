@@ -99,7 +99,8 @@ async function refreshData() {
             peopleArray.push({
                 name: name,
                 level: " " + level,
-                extra: `(${profession})`,
+                //extra: `${profession}`,
+                extra: profession,
                 tag: tagId
             });
 
