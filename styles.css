@@ -17,4 +17,4 @@ svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-ev
     stroke-width: 4 !important; stroke-opacity: 1 !important;
 }
 .active-list { background: #ffeb3b !important; }
-li { padding: 10px; border-bottom: 1px solid #eee; transition: background 0.1s; font-size: 0.8em; }
+li { padding: 10px; border-bottom: 1px solid #eee; transition: background 0.1s; font-size: 0.8em; color: #000; cursor: pointer; }

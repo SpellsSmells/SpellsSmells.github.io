@@ -1,3 +1,6 @@
+// Paste your exact Raw GitHub Gist Link inside the quotes below
+const GIST_URL = "https://gist.githubusercontent.com/SpellsSmells/2ec3f69e05b539ab8aafecc217cf1ce9/raw/f5e61ff17a96e6c4b9c8698a10804755f2d06a3e/map-data.txt";
+
 const TAG_AREAS = {
     "menu-item-a1fn2": "291,267 344,267 344,360 322,361",
     "menu-item-a1fn2n": "346,196 323,262 290,264 266,196",
@@ -47,7 +50,6 @@ const body = document.getElementById('main-body');
 const allAreaIds = Object.keys(TAG_AREAS);
 let lastMtime = 0;
 
-// Recreating your exact python structure to build the shapes dynamically
 function buildSVG() {
     const svgContainer = document.getElementById('map-svg');
     let svgShapes = "";
@@ -69,29 +71,69 @@ function updateTimeCounter() {
 
 async function refreshData() {
     try {
-        const response = await fetch('data.json?t=' + new Date().getTime());
-        const data = await response.json();
+        // Cache bust link to grab updates directly from Github server instantly
+        const response = await fetch(GIST_URL + '?t=' + new Date().getTime());
+        const rawText = await response.text();
         
-        if (data.mtime === lastMtime) return;
-        lastMtime = data.mtime;
+        // Break lines into arrays, ignoring blank rows
+        const lines = rawText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length === 0) return;
 
-        // 1. Update List
+        let peopleArray = [];
+        let countsMap = {};
+        let totalCount = lines.length;
+        let fileTimestamp = 0;
+
+        lines.forEach(line => {
+            const columns = line.split(",");
+            if (columns.length < 8) return; // Ignore formatting drops
+
+            const name = columns[1];
+            const profession = columns[2];
+            const level = columns[3];
+            const locationText = columns[5];
+            const dateStr = columns[6]; // Format: "2026-05-13 22:02"
+            const tagId = columns[7].trim();
+
+            // Populate text metrics array
+            peopleArray.push({
+                name: name,
+                level: "Lvl " + level,
+                extra: `(${profession}) - ${locationText}`,
+                tag: tagId
+            });
+
+            // Tally map metrics
+            countsMap[tagId] = (countsMap[tagId] || 0) + 1;
+
+            // Turn string date structure into a manageable unix baseline sequence
+            const parsedTime = Math.floor(Date.parse(dateStr.replace(" ", "T")) / 1000);
+            if (parsedTime > fileTimestamp) {
+                fileTimestamp = parsedTime;
+            }
+        });
+
+        // Skip render step if records have not actually altered
+        if (fileTimestamp === lastMtime) return;
+        lastMtime = fileTimestamp;
+
+        // 1. Render data block sidebar list element
         const list = document.getElementById('people-list');
-        list.innerHTML = data.people.map(p => `
+        list.innerHTML = peopleArray.map(p => `
             <li class="list-item ${p.tag}" 
                 onmouseover="syncHighlight('${p.tag}')" 
                 onmouseout="syncUnhighlight('${p.tag}')">
-                ${p.name} ${p.level} ${p.extra}
+                <strong>${p.name}</strong> [${p.level}] <span style="color:#666; font-size:0.9em;">${p.extra}</span>
             </li>`).join('');
 
-        // 2. Update Map
+        // 2. Map opacity distribution setup
         const maxOp = 0.8;
         allAreaIds.forEach(tag => {
             const poly = document.getElementById('poly-' + tag);
             if (poly) {
-                const count = data.counts[tag] || 0;
+                const count = countsMap[tag] || 0;
                 if (count > 0) {
-                    const op = (count / data.total) * maxOp;
+                    const op = (count / totalCount) * maxOp;
                     poly.style.setProperty('--base-op', op);
                     poly.style.stroke = "rgba(255, 255, 255, 0.8)";
                     poly.style.strokeWidth = "4";
@@ -102,7 +144,9 @@ async function refreshData() {
                 }
             }
         });
-    } catch (e) { console.error("Sync failed", e); }
+    } catch (e) { 
+        console.error("Gist processing sequence hit an issue:", e); 
+    }
 }
 
 function syncHighlight(tag) {
@@ -119,9 +163,7 @@ function syncUnhighlight(tag) {
     if (poly) poly.classList.remove('active-area');
 }
 
-// Fire initial build
 buildSVG();
-
-setInterval(refreshData, 3000);
+setInterval(refreshData, 5000); // Check Gist every 5 seconds
 setInterval(updateTimeCounter, 1000);
 refreshData();
