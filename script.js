@@ -91,8 +91,7 @@ async function refreshData() {
             <li class="list-item ${p.area_id}" 
                 onmouseover="syncHighlight('${p.area_id}')" 
                 onmouseout="syncUnhighlight('${p.area_id}')">
-                <strong>${p.name}</strong> [Lvl ${p.lvl}]
-                <small style="color:#666">${p.voc} - ${p.loc}</small>
+                <strong>${p.name}</strong> Lvl ${p.lvl} ${p.voc}
             </li>`).join('');
 
         // 2. Render Heatmap
