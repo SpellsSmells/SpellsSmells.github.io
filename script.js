@@ -44,66 +44,84 @@ const TAG_AREAS = {
 };
 
 const body = document.getElementById('main-body');
+const allAreaIds = Object.keys(TAG_AREAS);
 let lastMtime = 0;
 
+// Recreating your exact python structure to build the shapes dynamically
 function buildSVG() {
-    const svg = document.getElementById('map-svg');
-    let html = "";
-    for (const [id, pts] of Object.entries(TAG_AREAS)) {
-        html += `<polygon id="poly-${id}" class="map-area ${id}" points="${pts}" 
-                 onmouseover="sync('${id}', true)" onmouseout="sync('${id}', false)"></polygon>`;
+    const svgContainer = document.getElementById('map-svg');
+    let svgShapes = "";
+    for (const [tagId, points] of Object.entries(TAG_AREAS)) {
+        svgShapes += `<polygon id="poly-${tagId}" class="map-area ${tagId}" ` +
+                     `points="${points}" style="--base-op: 0; stroke: rgba(0,0,0,0); stroke-width: 0;" ` +
+                     `onmouseover="syncHighlight('${tagId}')" ` +
+                     `onmouseout="syncUnhighlight('${tagId}')"/>`;
     }
-    svg.innerHTML = html;
+    svgContainer.innerHTML = svgShapes;
 }
 
 function updateTimeCounter() {
-    if (!lastMtime) return;
+    if (lastMtime === 0) return;
     const diff = Math.floor(Date.now() / 1000) - lastMtime;
-    document.getElementById('time-ago').innerText = diff < 60 ? diff + "s ago" : Math.floor(diff/60) + "m ago";
+    let msg = diff < 60 ? diff + "s ago" : Math.floor(diff/60) + "min ago";
+    document.getElementById('time-ago').innerText = msg;
 }
 
-async function refresh() {
+async function refreshData() {
     try {
-        const res = await fetch('data.json?t=' + Date.now());
-        const data = await res.json();
+        const response = await fetch('data.json?t=' + new Date().getTime());
+        const data = await response.json();
+        
         if (data.mtime === lastMtime) return;
         lastMtime = data.mtime;
 
-        // Update List
-        document.getElementById('people-list').innerHTML = data.people.map(p => 
-            `<li class="${p.tag}" onmouseover="sync('${p.tag}', true)" onmouseout="sync('${p.tag}', false)">
+        // 1. Update List
+        const list = document.getElementById('people-list');
+        list.innerHTML = data.people.map(p => `
+            <li class="list-item ${p.tag}" 
+                onmouseover="syncHighlight('${p.tag}')" 
+                onmouseout="syncUnhighlight('${p.tag}')">
                 ${p.name} ${p.level} ${p.extra}
             </li>`).join('');
 
-        // Update Map
-        Object.keys(TAG_AREAS).forEach(tag => {
+        // 2. Update Map
+        const maxOp = 0.8;
+        allAreaIds.forEach(tag => {
             const poly = document.getElementById('poly-' + tag);
-            const count = data.counts[tag] || 0;
-            if (count > 0) {
-                poly.classList.add('has-data');
-                poly.style.setProperty('--op', (count / data.total) * 0.8);
-            } else {
-                poly.classList.remove('has-data');
+            if (poly) {
+                const count = data.counts[tag] || 0;
+                if (count > 0) {
+                    const op = (count / data.total) * maxOp;
+                    poly.style.setProperty('--base-op', op);
+                    poly.style.stroke = "rgba(255, 255, 255, 0.8)";
+                    poly.style.strokeWidth = "4";
+                } else {
+                    poly.style.setProperty('--base-op', 0);
+                    poly.style.stroke = "rgba(0,0,0,0)";
+                    poly.style.strokeWidth = "0";
+                }
             }
         });
-    } catch (e) { console.log("Waiting for data..."); }
+    } catch (e) { console.error("Sync failed", e); }
 }
 
-function sync(tag, active) {
-    if (active) {
-        body.classList.add('interaction-mode');
-        document.querySelectorAll('.' + tag).forEach(el => el.classList.add('active-list'));
-        const p = document.getElementById('poly-' + tag);
-        if (p) p.classList.add('active-area');
-    } else {
-        body.classList.remove('interaction-mode');
-        document.querySelectorAll('.' + tag).forEach(el => el.classList.remove('active-list'));
-        const p = document.getElementById('poly-' + tag);
-        if (p) p.classList.remove('active-area');
-    }
+function syncHighlight(tag) {
+    body.classList.add('interaction-mode');
+    document.querySelectorAll('.' + tag).forEach(el => el.classList.add('active-list'));
+    const poly = document.getElementById('poly-' + tag);
+    if (poly) poly.classList.add('active-area');
 }
 
+function syncUnhighlight(tag) {
+    body.classList.remove('interaction-mode');
+    document.querySelectorAll('.' + tag).forEach(el => el.classList.remove('active-list'));
+    const poly = document.getElementById('poly-' + tag);
+    if (poly) poly.classList.remove('active-area');
+}
+
+// Fire initial build
 buildSVG();
-setInterval(refresh, 3000);
+
+setInterval(refreshData, 3000);
 setInterval(updateTimeCounter, 1000);
-refresh();
+refreshData();

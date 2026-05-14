@@ -1,29 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Map Tracker</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body id="main-body">
-    <!-- Main Grid Wrapper -->
-    <div class="grid-container">
-        
-        <!-- Left Section: The Map -->
-        <div class="map-section">
-            <div class="map-wrapper">
-                <img src="map.png" alt="Map Base">
-                <svg id="map-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
-            </div>
+    <div class="map-section">
+        <div class="container">
+            <img src="map.png">
+            <svg id="map-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+                </svg>
         </div>
-
-        <!-- Right Section: The Data Sidebar -->
-        <div class="data-section">
-            <div id="status-bar">1Data updated: <span id="time-ago">Syncing...</span></div>
-            <ul id="people-list"></ul>
-        </div>
-
+    </div>
+    <div class="data-section">
+        <div id="status-bar">Data updated: <span id="time-ago">Syncing...</span></div>
+        <ul id="people-list"></ul>
     </div>
 
     <script src="script.js"></script>
