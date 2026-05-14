@@ -1,5 +1,5 @@
-// Paste your exact Raw GitHub Gist Link inside the quotes below
-const GIST_URL = "https://gist.githubusercontent.com/SpellsSmells/2ec3f69e05b539ab8aafecc217cf1ce9/raw/map-data.txt";
+// Your specific Firebase REST URL (Note the .json at the end - this is required)
+const FIREBASE_URL = "https://spellssmells-13a37-default-rtdb.europe-west1.firebasedatabase.app/map.json";
 
 const TAG_AREAS = {
     "menu-item-a1fn2": "291,267 344,267 344,360 322,361",
@@ -48,8 +48,9 @@ const TAG_AREAS = {
 
 const body = document.getElementById('main-body');
 const allAreaIds = Object.keys(TAG_AREAS);
-let lastMtime = 0;
+let lastTimestampStr = "";
 
+// 1. Setup the SVG polygons
 function buildSVG() {
     const svgContainer = document.getElementById('map-svg');
     let svgShapes = "";
@@ -62,73 +63,54 @@ function buildSVG() {
     svgContainer.innerHTML = svgShapes;
 }
 
+// 2. Update the "Time ago" UI
 function updateTimeCounter() {
-    if (lastMtime === 0) return;
-    const diff = Math.floor(Date.now() / 1000) - lastMtime;
+    if (!lastTimestampStr) return;
+    const lastUpdate = new Date(lastTimestampStr.replace(" ", "T")).getTime();
+    const diff = Math.floor((Date.now() - lastUpdate) / 1000);
     let msg = diff < 60 ? diff + "s ago" : Math.floor(diff/60) + "min ago";
     document.getElementById('time-ago').innerText = msg;
 }
 
+// 3. Main Data Fetch from Firebase
 async function refreshData() {
     try {
-        // Cache bust link to grab updates directly from Github server instantly
-        const response = await fetch(GIST_URL + '?t=' + new Date().getTime());
-        const rawText = await response.text();
+        const response = await fetch(FIREBASE_URL);
+        const data = await response.json();
         
-        // Break lines into arrays, ignoring blank rows
-        const lines = rawText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-        if (lines.length === 0) return;
+        if (!data) return;
 
-        let peopleArray = [];
-        let countsMap = {};
-        let totalCount = lines.length;
-        let fileTimestamp = 0;
+        // Firebase usually returns an object of objects. We turn it into an array.
+        const peopleArray = Object.values(data);
+        if (peopleArray.length === 0) return;
 
-        lines.forEach(line => {
-            const columns = line.split(",");
-            if (columns.length < 8) return; // Ignore formatting drops
+        // Get the latest timestamp from the data to check for updates
+        const latestEntry = peopleArray.reduce((prev, current) => 
+            (prev.timestamp > current.timestamp) ? prev : current
+        );
 
-            const name = columns[1];
-            const profession = columns[2];
-            const level = columns[3];
-            const locationText = columns[5];
-            const dateStr = columns[6]; // Format: "2026-05-13 22:02"
-            const tagId = columns[7].trim();
+        if (latestEntry.timestamp === lastTimestampStr) return; // Skip if no new data
+        lastTimestampStr = latestEntry.timestamp;
 
-            // Populate text metrics array
-            peopleArray.push({
-                name: name,
-                level: " " + level,
-                //extra: `${profession}`,
-                extra: profession,
-                tag: tagId
-            });
-
-            // Tally map metrics
-            countsMap[tagId] = (countsMap[tagId] || 0) + 1;
-
-            // Turn string date structure into a manageable unix baseline sequence
-            const parsedTime = Math.floor(Date.parse(dateStr.replace(" ", "T")) / 1000);
-            if (parsedTime > fileTimestamp) {
-                fileTimestamp = parsedTime;
-            }
-        });
-
-        // Skip render step if records have not actually altered
-        if (fileTimestamp === lastMtime) return;
-        lastMtime = fileTimestamp;
-
-        // 1. Render data block sidebar list element
+        // --- PART A: Update the Sidebar List ---
         const list = document.getElementById('people-list');
         list.innerHTML = peopleArray.map(p => `
-            <li class="list-item ${p.tag}" 
-                onmouseover="syncHighlight('${p.tag}')" 
-                onmouseout="syncUnhighlight('${p.tag}')">
-                <strong>${p.name}</strong> ${p.level} <span style="color:#666; font-size:0.9em;">${p.extra}</span>
+            <li class="list-item ${p.area_id}" 
+                onmouseover="syncHighlight('${p.area_id}')" 
+                onmouseout="syncUnhighlight('${p.area_id}')">
+                <strong>${p.name}</strong> [Lvl ${p.lvl}] <br>
+                <small style="color:#666">${p.voc} - ${p.loc}</small>
             </li>`).join('');
 
-        // 2. Map opacity distribution setup
+        // --- PART B: Update the Heatmap ---
+        let countsMap = {};
+        peopleArray.forEach(p => {
+            countsMap[p.area_id] = (countsMap[p.area_id] || 0) + 1;
+        });
+
+        const totalCount = peopleArray.length;
         const maxOp = 0.8;
+
         allAreaIds.forEach(tag => {
             const poly = document.getElementById('poly-' + tag);
             if (poly) {
@@ -145,11 +127,13 @@ async function refreshData() {
                 }
             }
         });
+
     } catch (e) { 
-        console.error("Gist processing sequence hit an issue:", e); 
+        console.error("Firebase fetch error:", e); 
     }
 }
 
+// 4. Interactivity Functions
 function syncHighlight(tag) {
     body.classList.add('interaction-mode');
     document.querySelectorAll('.' + tag).forEach(el => el.classList.add('active-list'));
@@ -164,7 +148,8 @@ function syncUnhighlight(tag) {
     if (poly) poly.classList.remove('active-area');
 }
 
+// Initialize
 buildSVG();
-setInterval(refreshData, 5000); // Check Gist every 5 seconds
-setInterval(updateTimeCounter, 1000);
+setInterval(refreshData, 5000);   // Check Firebase every 5 seconds
+setInterval(updateTimeCounter, 1000); // Update "seconds ago" every 1 second
 refreshData();
