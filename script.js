@@ -98,7 +98,7 @@ async function refreshData() {
             // Populate text metrics array
             peopleArray.push({
                 name: name,
-                level: "-" + level,
+                level: " " + level,
                 extra: `(${profession})`,
                 tag: tagId
             });
@@ -123,7 +123,7 @@ async function refreshData() {
             <li class="list-item ${p.tag}" 
                 onmouseover="syncHighlight('${p.tag}')" 
                 onmouseout="syncUnhighlight('${p.tag}')">
-                <strong>${p.name}</strong> [${p.level}] <span style="color:#666; font-size:0.9em;">${p.extra}</span>
+                <strong>${p.name}</strong> ${p.level} <span style="color:#666; font-size:0.9em;">${p.extra}</span>
             </li>`).join('');
 
         // 2. Map opacity distribution setup
