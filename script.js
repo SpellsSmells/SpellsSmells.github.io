@@ -1,5 +1,4 @@
-// Your specific Firebase REST URL (Note the .json at the end - this is required)
-const FIREBASE_URL = "https://spellssmells-13a37-default-rtdb.europe-west1.firebasedatabase.app/map.json";
+const FIREBASE_URL = "https://spellssmells-13a37-default-rtdb.europe-west1.firebasedatabase.app/.json";
 
 const TAG_AREAS = {
     "menu-item-a1fn2": "291,267 344,267 344,360 322,361",
@@ -48,9 +47,8 @@ const TAG_AREAS = {
 
 const body = document.getElementById('main-body');
 const allAreaIds = Object.keys(TAG_AREAS);
-let lastTimestampStr = "";
+let lastMtime = 0;
 
-// 1. Setup the SVG polygons
 function buildSVG() {
     const svgContainer = document.getElementById('map-svg');
     let svgShapes = "";
@@ -63,36 +61,31 @@ function buildSVG() {
     svgContainer.innerHTML = svgShapes;
 }
 
-// 2. Update the "Time ago" UI
 function updateTimeCounter() {
-    if (!lastTimestampStr) return;
-    const lastUpdate = new Date(lastTimestampStr.replace(" ", "T")).getTime();
-    const diff = Math.floor((Date.now() - lastUpdate) / 1000);
+    if (lastMtime === 0) return;
+    const diff = Math.floor(Date.now() / 1000) - lastMtime;
     let msg = diff < 60 ? diff + "s ago" : Math.floor(diff/60) + "min ago";
     document.getElementById('time-ago').innerText = msg;
 }
 
-// 3. Main Data Fetch from Firebase
 async function refreshData() {
     try {
         const response = await fetch(FIREBASE_URL);
         const data = await response.json();
         
-        if (!data) return;
+        // Match the specific structure: data.map.people
+        if (!data || !data.map || !data.map.people) {
+            console.error("Data structure is incorrect or empty", data);
+            return;
+        }
 
-        // Firebase usually returns an object of objects. We turn it into an array.
-        const peopleArray = Object.values(data);
-        if (peopleArray.length === 0) return;
+        // Use the Unix timestamp provided in your JSON
+        if (data.map.mtime === lastMtime) return;
+        lastMtime = data.map.mtime;
 
-        // Get the latest timestamp from the data to check for updates
-        const latestEntry = peopleArray.reduce((prev, current) => 
-            (prev.timestamp > current.timestamp) ? prev : current
-        );
+        const peopleArray = data.map.people;
 
-        if (latestEntry.timestamp === lastTimestampStr) return; // Skip if no new data
-        lastTimestampStr = latestEntry.timestamp;
-
-        // --- PART A: Update the Sidebar List ---
+        // 1. Render Sidebar List
         const list = document.getElementById('people-list');
         list.innerHTML = peopleArray.map(p => `
             <li class="list-item ${p.area_id}" 
@@ -102,10 +95,12 @@ async function refreshData() {
                 <small style="color:#666">${p.voc} - ${p.loc}</small>
             </li>`).join('');
 
-        // --- PART B: Update the Heatmap ---
+        // 2. Render Heatmap
         let countsMap = {};
         peopleArray.forEach(p => {
-            countsMap[p.area_id] = (countsMap[p.area_id] || 0) + 1;
+            if (p.area_id) {
+                countsMap[p.area_id] = (countsMap[p.area_id] || 0) + 1;
+            }
         });
 
         const totalCount = peopleArray.length;
@@ -128,12 +123,11 @@ async function refreshData() {
             }
         });
 
-    } catch (e) { 
-        console.error("Firebase fetch error:", e); 
+    } catch (e) {
+        console.error("Firebase sync error:", e);
     }
 }
 
-// 4. Interactivity Functions
 function syncHighlight(tag) {
     body.classList.add('interaction-mode');
     document.querySelectorAll('.' + tag).forEach(el => el.classList.add('active-list'));
@@ -148,8 +142,8 @@ function syncUnhighlight(tag) {
     if (poly) poly.classList.remove('active-area');
 }
 
-// Initialize
+// Initial Run
 buildSVG();
-setInterval(refreshData, 5000);   // Check Firebase every 5 seconds
-setInterval(updateTimeCounter, 1000); // Update "seconds ago" every 1 second
+setInterval(refreshData, 5000); 
+setInterval(updateTimeCounter, 1000);
 refreshData();
