@@ -1,4 +1,3 @@
-// 1. Move the Python dictionary here so JS can build the map
 const TAG_AREAS = {
     "menu-item-a1fn2": "291,267 344,267 344,360 322,361",
     "menu-item-a1fn2n": "346,196 323,262 290,264 266,196",
@@ -48,13 +47,13 @@ const body = document.getElementById('main-body');
 const allAreaIds = Object.keys(TAG_AREAS);
 let lastMtime = 0;
 
-// 2. Generate the SVG shapes exactly as Python did
 function buildSVG() {
     const svgContainer = document.getElementById('map-svg');
     let svgShapes = "";
     for (const [tagId, points] of Object.entries(TAG_AREAS)) {
+        // stroke transparent keeps lines hidden until hovered/active
         svgShapes += `<polygon id="poly-${tagId}" class="map-area ${tagId}" 
-                      points="${points}" style="--base-op: 0; stroke: rgba(0,0,0,0); stroke-width: 0;" 
+                      points="${points}" style="--base-op: 0; stroke: transparent; stroke-width: 0;" 
                       onmouseover="syncHighlight('${tagId}')" 
                       onmouseout="syncUnhighlight('${tagId}')"/>`;
     }
@@ -70,14 +69,12 @@ function updateTimeCounter() {
 
 async function refreshData() {
     try {
-        // Appended timestamp query to prevent browser caching the old file
         const response = await fetch('data.json?t=' + new Date().getTime());
         const data = await response.json();
         
         if (data.mtime === lastMtime) return;
         lastMtime = data.mtime;
 
-        // 1. Update List (fixed the template literal brackets here)
         const list = document.getElementById('people-list');
         list.innerHTML = data.people.map(p => `
             <li class="list-item ${p.tag}" 
@@ -86,7 +83,6 @@ async function refreshData() {
                 ${p.name} ${p.level} ${p.extra}
             </li>`).join('');
 
-        // 2. Update Map - Loop through EVERY area to ensure cleanup
         const maxOp = 0.8;
         allAreaIds.forEach(tag => {
             const poly = document.getElementById('poly-' + tag);
@@ -98,9 +94,8 @@ async function refreshData() {
                     poly.style.stroke = "rgba(255, 255, 255, 0.8)";
                     poly.style.strokeWidth = "4";
                 } else {
-                    // Reset areas that no longer have names
                     poly.style.setProperty('--base-op', 0);
-                    poly.style.stroke = "rgba(0,0,0,0)";
+                    poly.style.stroke = "transparent";
                     poly.style.strokeWidth = "0";
                 }
             }
@@ -124,10 +119,7 @@ function syncUnhighlight(tag) {
     if (poly) poly.classList.remove('active-area');
 }
 
-// Initialize the map on load
 buildSVG();
-
-// Keep your exact timings
 setInterval(refreshData, 3000);
 setInterval(updateTimeCounter, 1000);
 refreshData();
