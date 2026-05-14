@@ -44,82 +44,66 @@ const TAG_AREAS = {
 };
 
 const body = document.getElementById('main-body');
-const allAreaIds = Object.keys(TAG_AREAS);
 let lastMtime = 0;
 
 function buildSVG() {
-    const svgContainer = document.getElementById('map-svg');
-    let svgShapes = "";
-    for (const [tagId, points] of Object.entries(TAG_AREAS)) {
-        // stroke transparent keeps lines hidden until hovered/active
-        svgShapes += `<polygon id="poly-${tagId}" class="map-area ${tagId}" 
-                      points="${points}" style="--base-op: 0; stroke: transparent; stroke-width: 0;" 
-                      onmouseover="syncHighlight('${tagId}')" 
-                      onmouseout="syncUnhighlight('${tagId}')"/>`;
+    const svg = document.getElementById('map-svg');
+    let html = "";
+    for (const [id, pts] of Object.entries(TAG_AREAS)) {
+        html += `<polygon id="poly-${id}" class="map-area ${id}" points="${pts}" 
+                 onmouseover="sync('${id}', true)" onmouseout="sync('${id}', false)"></polygon>`;
     }
-    svgContainer.innerHTML = svgShapes;
+    svg.innerHTML = html;
 }
 
 function updateTimeCounter() {
-    if (lastMtime === 0) return;
+    if (!lastMtime) return;
     const diff = Math.floor(Date.now() / 1000) - lastMtime;
-    let msg = diff < 60 ? diff + "s ago" : Math.floor(diff/60) + "min ago";
-    document.getElementById('time-ago').innerText = msg;
+    document.getElementById('time-ago').innerText = diff < 60 ? diff + "s ago" : Math.floor(diff/60) + "m ago";
 }
 
-async function refreshData() {
+async function refresh() {
     try {
-        const response = await fetch('data.json?t=' + new Date().getTime());
-        const data = await response.json();
-        
+        const res = await fetch('data.json?t=' + Date.now());
+        const data = await res.json();
         if (data.mtime === lastMtime) return;
         lastMtime = data.mtime;
 
-        const list = document.getElementById('people-list');
-        list.innerHTML = data.people.map(p => `
-            <li class="list-item ${p.tag}" 
-                onmouseover="syncHighlight('${p.tag}')" 
-                onmouseout="syncUnhighlight('${p.tag}')">
+        // Update List
+        document.getElementById('people-list').innerHTML = data.people.map(p => 
+            `<li class="${p.tag}" onmouseover="sync('${p.tag}', true)" onmouseout="sync('${p.tag}', false)">
                 ${p.name} ${p.level} ${p.extra}
             </li>`).join('');
 
-        const maxOp = 0.8;
-        allAreaIds.forEach(tag => {
+        // Update Map
+        Object.keys(TAG_AREAS).forEach(tag => {
             const poly = document.getElementById('poly-' + tag);
-            if (poly) {
-                const count = data.counts[tag] || 0;
-                if (count > 0) {
-                    const op = (count / data.total) * maxOp;
-                    poly.style.setProperty('--base-op', op);
-                    poly.style.stroke = "rgba(255, 255, 255, 0.8)";
-                    poly.style.strokeWidth = "4";
-                } else {
-                    poly.style.setProperty('--base-op', 0);
-                    poly.style.stroke = "transparent";
-                    poly.style.strokeWidth = "0";
-                }
+            const count = data.counts[tag] || 0;
+            if (count > 0) {
+                poly.classList.add('has-data');
+                poly.style.setProperty('--op', (count / data.total) * 0.8);
+            } else {
+                poly.classList.remove('has-data');
             }
         });
-    } catch (e) { 
-        console.error("Sync failed. Check if data.json exists.", e); 
+    } catch (e) { console.log("Waiting for data..."); }
+}
+
+function sync(tag, active) {
+    if (active) {
+        body.classList.add('interaction-mode');
+        document.querySelectorAll('.' + tag).forEach(el => el.classList.add('active-list'));
+        const p = document.getElementById('poly-' + tag);
+        if (p) p.classList.add('active-area');
+    } else {
+        body.classList.remove('interaction-mode');
+        document.querySelectorAll('.' + tag).forEach(el => el.classList.remove('active-list'));
+        const p = document.getElementById('poly-' + tag);
+        if (p) p.classList.remove('active-area');
     }
 }
 
-function syncHighlight(tag) {
-    body.classList.add('interaction-mode');
-    document.querySelectorAll('.' + tag).forEach(el => el.classList.add('active-list'));
-    const poly = document.getElementById('poly-' + tag);
-    if (poly) poly.classList.add('active-area');
-}
-
-function syncUnhighlight(tag) {
-    body.classList.remove('interaction-mode');
-    document.querySelectorAll('.' + tag).forEach(el => el.classList.remove('active-list'));
-    const poly = document.getElementById('poly-' + tag);
-    if (poly) poly.classList.remove('active-area');
-}
-
 buildSVG();
-setInterval(refreshData, 3000);
+setInterval(refresh, 3000);
 setInterval(updateTimeCounter, 1000);
-refreshData();
+refresh();

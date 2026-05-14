@@ -1,72 +1,108 @@
-/* Layout locks to prevent wrapping */
+/* Reset and Grid Setup */
+* { box-sizing: border-box; }
 body { 
     margin: 0; 
-    display: flex; 
-    width: 100vw;
+    padding: 0;
     height: 100vh; 
-    overflow: hidden; 
-    font-family: sans-serif; 
+    width: 100vw;
     background: #000; 
+    font-family: sans-serif;
+    overflow: hidden;
 }
-.map-section { 
-    width: 85%; 
+
+.grid-container {
+    display: grid;
+    grid-template-columns: 85fr 15fr; /* 85% Map, 15% Sidebar */
+    width: 100%;
     height: 100%;
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
+}
+
+/* Map Centering */
+.map-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #111;
+    overflow: hidden;
+}
+
+/* This container forces the SVG and IMG to be the exact same size */
+.map-wrapper {
     position: relative;
+    display: grid;
+    grid-template-areas: "stack";
+    max-width: 100%;
+    max-height: 100%;
 }
-.data-section { 
-    width: 15%; 
+
+.map-wrapper img {
+    grid-area: stack;
+    max-width: 100%;
+    max-height: 100vh;
+    display: block;
+    object-fit: contain;
+}
+
+.map-wrapper svg {
+    grid-area: stack;
+    width: 100%;
     height: 100%;
-    background: #fff; 
-    border-left: 2px solid #333; 
-    display: flex; 
-    flex-direction: column; 
+    z-index: 10; /* Ensures mouse hits polygons, not the image */
+    pointer-events: auto;
 }
 
-/* Container hugs the image to keep SVG aligned properly */
-.container { 
-    position: relative; 
-    display: inline-block; 
-    max-width: 100%; 
-    max-height: 100%; 
-}
-img { 
-    max-width: 100%; 
-    max-height: 100vh; 
-    display: block; 
-    width: auto;
-    height: auto;
-}
-/* SVG sits strictly on top of the image */
-svg { 
-    position: absolute; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%; 
-    z-index: 10; 
+/* Sidebar Styling */
+.data-section {
+    background: #fff;
+    border-left: 3px solid #444;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
-#status-bar { padding: 12px; background: #f8f9fa; border-bottom: 2px solid #ddd; font-size: 0.75em; color: #555; }
-#time-ago { font-weight: bold; color: #d32f2f; }
-#people-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; color: #000; }
+#status-bar { 
+    padding: 15px; 
+    background: #eee; 
+    border-bottom: 2px solid #ccc; 
+    font-size: 0.8em; 
+    color: #333; 
+}
 
-/* Fixed polygon colors to avoid the "Black Shape" glitch */
+#people-list { 
+    margin: 0; 
+    padding: 0; 
+    list-style: none; 
+    overflow-y: auto; 
+    color: #000;
+}
+
+li { 
+    padding: 12px; 
+    border-bottom: 1px solid #ddd; 
+    font-size: 0.85em; 
+    cursor: pointer; 
+}
+
+/* Polygon Logic */
 .map-area { 
-    fill: red; 
-    fill-opacity: var(--base-op); 
-    transition: fill-opacity 0.3s, stroke 0.3s; 
-    cursor: pointer;
+    fill: none; /* Stops the black shapes from appearing */
+    pointer-events: all; /* Makes transparent areas clickable */
+    transition: fill 0.3s;
 }
-.interaction-mode .map-area { fill-opacity: 0; stroke-opacity: 0.2; }
+
+/* When data is present */
+.has-data {
+    fill: red;
+    fill-opacity: var(--op);
+}
+
+/* Hover/Active States */
+.interaction-mode .map-area { fill-opacity: 0.1; }
 .interaction-mode .map-area.active-area { 
-    fill-opacity: 0.4 !important; 
-    stroke: rgba(255, 255, 255, 1) !important; 
-    stroke-width: 4 !important; 
-    stroke-opacity: 1 !important;
+    fill: red !important;
+    fill-opacity: 0.6 !important;
+    stroke: white !important;
+    stroke-width: 5 !important;
 }
 
 .active-list { background: #ffeb3b !important; }
-li { padding: 10px; border-bottom: 1px solid #eee; transition: background 0.1s; font-size: 0.8em; cursor: pointer; }
