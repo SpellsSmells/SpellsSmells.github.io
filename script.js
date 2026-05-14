@@ -98,8 +98,8 @@ async function refreshData() {
             // Populate text metrics array
             peopleArray.push({
                 name: name,
-                level: "Lvl " + level,
-                extra: `(${profession}) - ${locationText}`,
+                level: "-" + level,
+                extra: `(${profession})`,
                 tag: tagId
             });
 
