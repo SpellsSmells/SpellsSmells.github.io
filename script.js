@@ -73,17 +73,17 @@ async function refreshData() {
         const response = await fetch(FIREBASE_URL);
         const data = await response.json();
         
-        // Match the specific structure: data.map.people
-        if (!data || !data.map || !data.map.people) {
+        // Before we looked for data.map.people. 
+        // Now 'data' IS the object containing 'people' and 'mtime'.
+        if (!data || !data.people) {
             console.error("Data structure is incorrect or empty", data);
             return;
         }
 
-        // Use the Unix timestamp provided in your JSON
-        if (data.map.mtime === lastMtime) return;
-        lastMtime = data.map.mtime;
+        if (data.mtime === lastMtime) return;
+        lastMtime = data.mtime;
 
-        const peopleArray = data.map.people;
+        const peopleArray = data.people;
 
         // 1. Render Sidebar List
         const list = document.getElementById('people-list');
