@@ -1,4 +1,4 @@
-const FIREBASE_URL = "https://spellssmells-13a37-default-rtdb.europe-west1.firebasedatabase.app/.json";
+const FIREBASE_URL = "https://spellssmells-13a37-default-rtdb.europe-west1.firebasedatabase.app/map.json";
 
 const TAG_AREAS = {
     "menu-item-a1fn2": "291,267 344,267 344,360 322,361",
